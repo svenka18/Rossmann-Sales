@@ -2,6 +2,9 @@ library(rpart)
 library(Metrics)
 
 ######################## Linear Regression
+
+######################test set does not have customers data to predict sales
+######################Lets compute that first
 mod <-lm(Customers~.-Store -Date -Sales,train[,-c(6,17)])
 summary(mod) #RSquared only 32%
 p<-predict(mod,test)
@@ -9,14 +12,6 @@ length(p)
 mod1<-augment(mod)
 View(mod1)
 rmse(test$Customers,p) #rmse = 330.4204
-
-mod <-lm(Sales~.-Store -Date,train[,-6])
-summary(mod) #RSquared 83%
-p<-predict(mod,validation)
-length(p)
-mod1<-augment(mod)
-View(mod1)
-
 
 #PromoInterval- No Promo Applied coefficient is NA! lets do a pairwaise t-test 
 pairwise.t.test(training$Sales,training$PromoInterval,p.adjust="none") %>% tidy()
@@ -78,6 +73,35 @@ model <- models[[i]]
 # Generate predictions on grade_valid 
 pred <- predict(object = model,newdata = test)
 # Compute validation RMSE and add to the 
-rmse_values[i] <- rmse(actual = test$Customers, 
+rmse[i] <- rmse(actual = test$Customers, 
                          predicted = pred)
 }
+
+best_model <- models[[which.min(rmse)]]
+best_model$control
+
+# Compute test set RMSE on best_model
+pred <- predict(object = best_model,
+                newdata = test)
+rmse(actual = test$Customers, 
+     predicted = pred)
+
+#compute customers on unseen data
+testing$Customers <- predict(object = best_model,
+                             newdata = testing)
+testing$Customers<-round(testing$Customers)
+
+View(testing)
+
+########################## Sales Predictions
+
+mod_sales <-lm(Sales~.-Store -Date,train[,-c(6,17)])
+summary(mod_sales) #RSquared 83%
+p<-predict(mod_sales,test)
+length(p)
+mod1<-augment(mod)
+View(mod1)
+rmse(test$Sales,p)
+#compute sales on unseen data
+testing$sales <- predict(object = mod_sales,
+                         newdata = testing)
